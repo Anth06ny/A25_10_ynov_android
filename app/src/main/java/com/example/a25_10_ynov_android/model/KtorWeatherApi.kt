@@ -1,0 +1,120 @@
+package com.example.a25_10_ynov_android.model
+
+import android.annotation.SuppressLint
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+//Suspend sera expliqué dans le chapitre des coroutines
+suspend fun main() {
+    val res = KtorWeatherApi.loadWeathers("Nice")
+    for(r in res){
+        println(r.getResume())
+    }
+    KtorMuseumApi.close()
+}
+
+object KtorWeatherApi {
+    private const val API_URL =
+        "https://api.openweathermap.org/data/2.5"
+
+    //Création et réglage du client
+    private val client  = HttpClient {
+        install(Logging) {
+            //(import io.ktor.client.plugins.logging.Logger)
+            logger = object : Logger {
+                override fun log(message: String) {
+                    println(message)
+                }
+            }
+            level = LogLevel.INFO  // TRACE, HEADERS, BODY, etc.
+        }
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true }, contentType = ContentType.Any)
+        }
+        expectSuccess = true //Exception si code >= 300
+        //engine { proxy = ProxyBuilder.http("monproxy:1234") }
+    }
+
+    //GET Le JSON reçu sera parser en List<MuseumObject>,
+    //Crash si le JSON ne correspond pas
+    suspend fun loadWeathers(cityName : String): List<WeatherBean> {
+        return client.get("$API_URL/find?appid=b80967f0a6bd10d23e44848547b26550&units=metric&lang=fr&q=$cityName"){
+//            headers {
+//                append("Authorization", "Bearer YOUR_TOKEN")
+//                append("Custom-Header", "CustomValue")
+//            }
+        }.body<WeatheAPIResult>().list.onEach { w->
+            w.weather.forEach {
+                it.icon = "https://openweathermap.org/img/wn/${it.icon}@4x.png"
+            }
+        }
+        //possibilité de typer le body
+        //.body<List<MuseumObject>>()
+    }
+
+    //POST
+    suspend fun postData(newObject: MuseumObject): MuseumObject {
+        return client.post(API_URL){
+            setBody(newObject)
+        }.body()
+    }
+
+    //Ferme le Client mais celui ci ne sera plus utilisable. Uniquement pour le main
+    fun close() = client.close()
+
+    //Avancés : Exemple avec Flow
+    //fun getDataFlow() = flow<List<MuseumObject>> {
+    //    emit(client.get(API_URL).body())
+    //}
+}
+
+//DATA CLASS
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class WeatheAPIResult(
+    val list: List<WeatherBean>,
+)
+
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class WeatherBean(
+    val id: Int,
+    val main: TempBean,
+    val name: String,
+    val weather: List<DescriptionBean>,
+    val wind: WindBean
+) {
+    fun getResume() = """
+        Il fait ${main.temp}° à $name (id=$id) avec un vent de ${wind.speed} m/s
+        -Description : ${weather.firstOrNull()?.description ?: "-"}
+        -Icône : ${weather.firstOrNull()?.icon ?: "-"}
+    """.trimIndent()
+}
+
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class TempBean(
+    val temp: Double,
+)
+
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class DescriptionBean(
+    val description: String,
+    var icon: String,
+)
+
+@SuppressLint("UnsafeOptInUsageError")
+@Serializable
+data class WindBean(
+    val speed: Double
+)
