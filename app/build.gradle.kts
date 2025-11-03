@@ -53,6 +53,8 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-ktor3:3.2.0")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
 
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

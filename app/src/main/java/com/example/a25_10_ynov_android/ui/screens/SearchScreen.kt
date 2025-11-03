@@ -1,6 +1,8 @@
 package com.example.a25_10_ynov_android.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
@@ -23,15 +27,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.example.a25_10_ynov_android.R
 import com.example.a25_10_ynov_android.model.WeatherBean
@@ -49,27 +61,44 @@ fun SearchScreenPreview() {
     //Utilisé par exemple dans MainActivity.kt sous setContent {...}
     A25_10_ynov_androidTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            SearchScreen(modifier = Modifier.padding(innerPadding))
+            val mainViewModel = MainViewModel()
+            mainViewModel.loadFakeData(true, "un message d'erreur")
+            SearchScreen(
+                modifier = Modifier.padding(innerPadding),
+                mainViewModel = mainViewModel
+            )
         }
     }
 }
 
 
 @Composable
-fun SearchScreen(modifier: Modifier = Modifier, mainViewModel: MainViewModel = MainViewModel()) {
+fun SearchScreen(
+    modifier: Modifier = Modifier,
+    mainViewModel: MainViewModel = viewModel()
+) {
     Column(
         modifier = modifier
             .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        SearchBar()
+        var searchText = rememberSaveable { mutableStateOf("") }
+
+        SearchBar(
+            searchText = searchText,
+            onSearchEvent = {
+                mainViewModel.loadWeathers(searchText.value)
+            }
+        )
 
         val list = mainViewModel.dataList.collectAsStateWithLifecycle().value
+        //.filter { it.name.contains(searchText.value, true) }
         //Permet de remplacer très facilement le RecyclerView. LazyRow existe aussi
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp),
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f)
-            ) {
+        ) {
             items(list.size) {
                 PictureRowItem(data = list[it])
             }
@@ -77,7 +106,7 @@ fun SearchScreen(modifier: Modifier = Modifier, mainViewModel: MainViewModel = M
 
         Row {
             Button(
-                onClick = { /* Do something! */ },
+                onClick = { searchText.value = "" },
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding
             ) {
                 Icon(
@@ -90,7 +119,7 @@ fun SearchScreen(modifier: Modifier = Modifier, mainViewModel: MainViewModel = M
             }
 
             Button(
-                onClick = { /* Do something! */ },
+                onClick = { mainViewModel.loadWeathers(searchText.value) },
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding
             ) {
                 Icon(
@@ -99,17 +128,25 @@ fun SearchScreen(modifier: Modifier = Modifier, mainViewModel: MainViewModel = M
                     modifier = Modifier.size(ButtonDefaults.IconSize)
                 )
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text( stringResource(R.string.bt_load_data))
+                Text(stringResource(R.string.bt_load_data))
             }
         }
     }
 }
 
 @Composable
-fun SearchBar(modifier: Modifier = Modifier) {
+fun SearchBar(
+    modifier: Modifier = Modifier,
+    searchText: MutableState<String> = mutableStateOf(""),
+    onSearchEvent: () -> Unit = {}
+) {
+
+
     TextField(
-        value = "", //Valeur affichée
-        onValueChange = {newValue:String -> }, //Nouveau texte entrée
+        value = searchText.value, //Valeur affichée
+        onValueChange = { newValue: String ->
+            searchText.value = newValue
+        }, //Nouveau texte entrée
         leadingIcon = { //Image d'icône
             Icon(
                 imageVector = Icons.Default.Search,
@@ -127,8 +164,11 @@ fun SearchBar(modifier: Modifier = Modifier) {
         //Text("Recherche")
         //},
 
-        //keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), // Définir le bouton "Entrée" comme action de recherche
-        //keyboardActions = KeyboardActions(onSearch = {onSearchAction()}), // Déclenche l'action définie
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), // Définir le bouton "Entrée" comme action de recherche
+        keyboardActions = KeyboardActions(onSearch = {
+            onSearchEvent()
+        }
+        ), // Déclenche l'action définie
         //Comment le composant doit se placer
         modifier = modifier
             .fillMaxWidth() // Prend toute la largeur
@@ -138,6 +178,8 @@ fun SearchBar(modifier: Modifier = Modifier) {
 
 @Composable //Composable affichant 1 élément
 fun PictureRowItem(modifier: Modifier = Modifier, data: WeatherBean) {
+
+    var longText by remember { mutableStateOf(false) }
 
     Row(
         modifier = modifier
@@ -167,15 +209,27 @@ fun PictureRowItem(modifier: Modifier = Modifier, data: WeatherBean) {
         )
 
 
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(10.dp)
+                .clickable {
+                    longText = !longText
+                }
+        ) {
             Text(
                 text = data.name,
                 fontSize = 20.sp,
                 color = MaterialTheme.colorScheme.primary
             )
-            Text(text = data.getResume().take(20) + "...",
+            Text(
+                text = if (longText) data.getResume()
+                else
+                    data.getResume().take(20) + "...",
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
-                fontSize = 14.sp,)
+                fontSize = 14.sp,
+                modifier = Modifier.animateContentSize()
+
+            )
         }
     }
 
