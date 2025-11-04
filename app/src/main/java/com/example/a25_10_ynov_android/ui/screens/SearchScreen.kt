@@ -78,7 +78,8 @@ fun SearchScreenPreview() {
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
-    mainViewModel: MainViewModel = viewModel()
+    mainViewModel: MainViewModel = viewModel(),
+    onPictureClick: (WeatherBean) -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -101,7 +102,7 @@ fun SearchScreen(
 
         MyError(errorMessage = errorMessage)
 
-        AnimatedVisibility(visible = runInProgress){
+        AnimatedVisibility(visible = runInProgress) {
             CircularProgressIndicator()
         }
 
@@ -113,7 +114,10 @@ fun SearchScreen(
             modifier = Modifier.weight(1f)
         ) {
             items(list.size) {
-                PictureRowItem(data = list[it])
+                PictureRowItem(
+                    data = list[it],
+                    onPictureClick = onPictureClick
+                )
             }
         }
 
@@ -190,7 +194,11 @@ fun SearchBar(
 }
 
 @Composable //Composable affichant 1 élément
-fun PictureRowItem(modifier: Modifier = Modifier, data: WeatherBean) {
+fun PictureRowItem(
+    modifier: Modifier = Modifier,
+    data: WeatherBean,
+    onPictureClick: (WeatherBean) -> Unit
+) {
 
     var longText by remember { mutableStateOf(false) }
 
@@ -219,6 +227,9 @@ fun PictureRowItem(modifier: Modifier = Modifier, data: WeatherBean) {
             modifier = Modifier
                 .heightIn(max = 100.dp)
                 .widthIn(max = 100.dp)
+                .clickable {
+                    onPictureClick(data)
+                }
         )
 
 
