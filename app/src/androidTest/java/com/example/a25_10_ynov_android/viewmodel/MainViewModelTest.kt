@@ -4,11 +4,17 @@ import com.example.a25_10_ynov_android.model.DescriptionBean
 import com.example.a25_10_ynov_android.model.TempBean
 import com.example.a25_10_ynov_android.model.WeatherBean
 import com.example.a25_10_ynov_android.model.WindBean
+import kotlinx.coroutines.Job
 
 class MainViewModelTest : MainViewModel() {
 
     companion object {
         const val ERROR_MESSAGE_TEST = "Une erreur est survenue"
+    }
+
+    override fun loadWeathers(cityName: String): Job {
+        dataList.value = fakeList(cityName = cityName)
+        return Job()
     }
 
     //Méthode pour définir un état particulier à tester

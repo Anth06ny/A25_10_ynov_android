@@ -85,7 +85,7 @@ open class MainViewModel(val dispatcher : CoroutineDispatcher = Dispatchers.IO) 
         ).shuffled() //shuffled() pour avoir un ordre différent à chaque appel
     }
 
-    fun loadWeathers(cityName: String): Job {
+    open fun loadWeathers(cityName: String): Job {
         runInProgress.value = true
         errorMessage.value = ""
 
