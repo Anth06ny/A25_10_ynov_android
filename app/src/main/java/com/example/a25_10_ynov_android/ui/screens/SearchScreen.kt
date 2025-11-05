@@ -64,7 +64,7 @@ fun SearchScreenPreview() {
     //Utilisé par exemple dans MainActivity.kt sous setContent {...}
     A25_10_ynov_androidTheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            val mainViewModel = MainViewModel()
+            val mainViewModel : MainViewModel = viewModel()
             mainViewModel.loadFakeData(true, "un message d'erreur")
             SearchScreen(
                 modifier = Modifier.padding(innerPadding),
